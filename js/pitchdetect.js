@@ -24,14 +24,14 @@ SOFTWARE.
 
 window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
-var audioContext = null;
-var isPlaying = false;
-var sourceNode = null;
-var analyser = null;
-var theBuffer = null;
-var DEBUGCANVAS = null;
-var mediaStreamSource = null;
-var detectorElem,
+let audioContext = null;
+let isPlaying = false;
+let sourceNode = null;
+let analyser = null;
+let theBuffer = null;
+let DEBUGCANVAS = null;
+let mediaStreamSource = null;
+let detectorElem,
 	canvasElem,
 	waveCanvas,
 	pitchElem,
@@ -41,7 +41,7 @@ var detectorElem,
 
 
 function loadAudio(url) {
-	var request = new XMLHttpRequest();
+	const request = new XMLHttpRequest();
 
 	request.open("GET", url, true);
 
@@ -84,14 +84,14 @@ window.onload = function() {
   		e.preventDefault();
 		theBuffer = null;
 
-	  	var reader = new FileReader();
-	  	reader.onload = function (event) {
+		const reader = new FileReader();
+		reader.onload = function (event) {
 	  		audioContext.decodeAudioData( event.target.result, function(buffer) {
 	    		theBuffer = buffer;
 	  		}, function(){alert("error loading!");} );
 
 	  	};
-	  	reader.onerror = function (event) {
+	  	reader.onerror = function (_) {
 	  		alert("Error: " + reader.error );
 		};
 	  	reader.readAsArrayBuffer(e.dataTransfer.files[0]);
@@ -212,14 +212,13 @@ function togglePlayback(url) {
 }
 
 var rafID = null;
-var tracks = null;
-var buflen = 2048;
-var buf = new Float32Array( buflen );
+const buflen = 2048;
+let buf = new Float32Array(buflen);
 
-var noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 function noteFromPitch( frequency ) {
-	var noteNum = 12 * (Math.log( frequency / 440 )/Math.log(2) );
+	const noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
 	return Math.round( noteNum ) + 69;
 }
 
@@ -294,42 +293,44 @@ function autoCorrelate( buf, sampleRate ) {
 
 function autoCorrelate( buf, sampleRate ) {
 	// Implements the ACF2+ algorithm
-	var SIZE = buf.length;
-	var rms = 0;
+	let SIZE = buf.length;
+	let rms = 0;
 
-	for (var i=0;i<SIZE;i++) {
-		var val = buf[i];
+	for (let i=0; i<SIZE; i++) {
+		const val = buf[i];
 		rms += val*val;
 	}
 	rms = Math.sqrt(rms/SIZE);
 	if (rms<0.01) // not enough signal
 		return -1;
 
-	var r1=0, r2=SIZE-1, thres=0.2;
-	for (var i=0; i<SIZE/2; i++)
+	let r1 = 0, r2 = SIZE - 1;
+	const thres = 0.2;
+	for (let i=0; i<SIZE/2; i++)
 		if (Math.abs(buf[i])<thres) { r1=i; break; }
-	for (var i=1; i<SIZE/2; i++)
+	for (let i=1; i<SIZE/2; i++)
 		if (Math.abs(buf[SIZE-i])<thres) { r2=SIZE-i; break; }
 
 	buf = buf.slice(r1,r2);
 	SIZE = buf.length;
 
-	var c = new Array(SIZE).fill(0);
-	for (var i=0; i<SIZE; i++)
-		for (var j=0; j<SIZE-i; j++)
+	const c = new Array(SIZE).fill(0);
+	for (let i=0; i<SIZE; i++)
+		for (let j=0; j<SIZE-i; j++)
 			c[i] = c[i] + buf[j]*buf[j+i];
 
-	var d=0; while (c[d]>c[d+1]) d++;
-	var maxval=-1, maxpos=-1;
+	let d = 0;
+	while (c[d]>c[d+1]) d++;
+	let maxval = -1, maxpos = -1;
 	for (var i=d; i<SIZE; i++) {
 		if (c[i] > maxval) {
 			maxval = c[i];
 			maxpos = i;
 		}
 	}
-	var T0 = maxpos;
+	let T0 = maxpos;
 
-	var x1=c[T0-1], x2=c[T0], x3=c[T0+1];
+	const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
 	a = (x1 + x3 - 2*x2)/2;
 	b = (x3 - x1)/2;
 	if (a) T0 = T0 - b/(2*a);
@@ -337,10 +338,9 @@ function autoCorrelate( buf, sampleRate ) {
 	return sampleRate/T0;
 }
 
-function updatePitch( time ) {
-	var cycles = new Array;
+function updatePitch() {
 	analyser.getFloatTimeDomainData( buf );
-	var ac = autoCorrelate( buf, audioContext.sampleRate );
+	const ac = autoCorrelate(buf, audioContext.sampleRate);
 	// TODO: Paint confidence meter on canvasElem here.
 
 	if (DEBUGCANVAS) {  // This draws the current waveform, useful for debugging
@@ -361,13 +361,13 @@ function updatePitch( time ) {
 		waveCanvas.strokeStyle = "black";
 		waveCanvas.beginPath();
 		waveCanvas.moveTo(0,buf[0]);
-		for (var i=1;i<512;i++) {
+		for (let i=1; i<512; i++) {
 			waveCanvas.lineTo(i,128+(buf[i]*128));
 		}
 		waveCanvas.stroke();
 	}
 
- 	if (ac == -1) {
+ 	if (ac === -1) {
  		detectorElem.className = "vague";
 	 	pitchElem.innerText = "--";
 		noteElem.innerText = "-";
@@ -377,10 +377,10 @@ function updatePitch( time ) {
 	 	detectorElem.className = "confident";
 	 	pitch = ac;
 	 	pitchElem.innerText = Math.round( pitch ) ;
-	 	var note =  noteFromPitch( pitch );
+		const note = noteFromPitch(pitch);
 		noteElem.innerHTML = noteStrings[note%12];
-		var detune = centsOffFromPitch( pitch, note );
-		if (detune == 0 ) {
+		const detune = centsOffFromPitch(pitch, note);
+		if (detune === 0 ) {
 			detuneElem.className = "";
 			detuneAmount.innerHTML = "--";
 		} else {
